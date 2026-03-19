@@ -1,0 +1,28 @@
+{
+  "name": "sf-scheduler-monorepo",
+  "workspaces": {
+    "packages": [
+      "frontend",
+      "backend",
+      "packages/*"
+    ],
+    "nohoist": [
+      "frontend/**",
+      "frontend/**/**"
+    ]
+  },
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:frontend": "turbo run dev:frontend-only",
+    "dev:local:frontend": "turbo run dev:noauth",
+    "dev:backend": "turbo run dev --filter=backend",
+    "build": "turbo run build",
+    "prod": "turbo run start:prod"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1",
+    "turbo": "^2.8.17",
+    "wait-on": "^8.0.1"
+  }
+}

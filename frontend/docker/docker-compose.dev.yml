@@ -1,0 +1,15 @@
+services:
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: adminportal-frontend:dev
+    container_name: adminportal-frontend-dev
+    ports:
+      - "${PORT:-31000}:8000"
+    environment:
+      - API_URL=${API_URL:-http://host.docker.internal:8080}
+      - NGINX_ENVSUBST_FILTER=API_URL
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

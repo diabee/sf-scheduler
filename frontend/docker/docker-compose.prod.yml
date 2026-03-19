@@ -1,0 +1,18 @@
+services:
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: adminportal-frontend:prod
+    container_name: adminportal-frontend-prod
+    ports:
+      - "${PORT:-31000}:8000"
+    environment:
+      - API_URL=${API_URL:-https://api.example.com}
+      - NGINX_ENVSUBST_FILTER=API_URL
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

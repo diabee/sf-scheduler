@@ -1,0 +1,47 @@
+# 忽略 node_modules 目錄
+node_modules
+
+# 忽略生成的目錄
+dist
+build
+
+# 忽略特定的配置和日誌文件
+*.log
+*.json
+*.lock
+*.cache
+*.md
+*.html
+
+# 忽略環境配置文件
+.env
+.env.local
+.env.*.local
+
+# 忽略VSCode 配置文件
+.vscode
+
+# 忽略圖片和資源文件
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+
+# 忽略特定的語言文件
+*.css
+*.scss
+*.less
+
+# 忽略特定的測試輸出和覆蓋率目錄
+coverage
+output
+
+# 忽略特定的檔案類型
+*.min.js
+*.bundle.js
+
+# 忽略靜態資源和公共目錄
+public
+static

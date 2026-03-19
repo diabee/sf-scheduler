@@ -1,0 +1,13 @@
+services:
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: adminportal-frontend:staging
+    container_name: adminportal-frontend-staging
+    ports:
+      - "${PORT:-31000}:8000"
+    environment:
+      - API_URL=${API_URL:-https://api-staging.example.com}
+      - NGINX_ENVSUBST_FILTER=API_URL
+    restart: unless-stopped
