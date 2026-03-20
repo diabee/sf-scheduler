@@ -3,14 +3,12 @@ import { motion } from 'framer-motion';
 import {
   Avatar,
   Box,
-  Button,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
 } from '@mui/material';
-import SettingsIcon from '@mui/icons-material/Settings';
-import LogoutIcon from '@mui/icons-material/Logout';
+
 import type { CurrentUser, ViewState } from '~/types';
 
 interface NavItem {
@@ -25,7 +23,6 @@ interface SideNavProps {
   navItems: NavItem[];
   currentView: ViewState;
   onNavigate: (view: ViewState, url?: string) => void;
-  onLogout: () => void;
   currentUser: CurrentUser | null;
 }
 
@@ -48,7 +45,6 @@ const SideNav = ({
   navItems, 
   currentView, 
   onNavigate, 
-  onLogout, 
   currentUser 
 }: SideNavProps) => {
   const { t } = useTranslation();
@@ -91,7 +87,7 @@ const SideNav = ({
                 color: '#FF6B00',
                 '& .MuiTypography-root': { 
                   fontWeight: currentView === item.id ? 700 : 500,
-                  fontSize: '0.9rem'
+                  fontSize: '1rem'
                 }
               }}
             />
@@ -105,9 +101,7 @@ const SideNav = ({
           whileTap={{ scale: 0.98 }}
         >
           <Box
-            className="flex items-center gap-3 mb-4 p-2 rounded-xl cursor-pointer transition-colors hover:bg-gray-100"
-            onClick={() => onNavigate('profile')}
-            sx={{ border: '1px solid transparent', '&:hover': { borderColor: 'rgba(0,0,0,0.05)' } }}
+            className="flex items-center gap-3 mb-4 p-2 rounded-xl"
           >
             <Avatar sx={{ bgcolor: '#FF6B00', boxShadow: '0 2px 8px rgba(255,107,0,0.3)' }}>
               {currentUser?.username?.charAt(0)?.toUpperCase() || 'U'}
@@ -120,20 +114,8 @@ const SideNav = ({
                 {currentUser?.email}
               </p>
             </Box>
-            <SettingsIcon fontSize="small" className="text-gray-400" />
           </Box>
         </motion.div>
-        
-        <Button
-          fullWidth
-          variant="outlined"
-          color="error"
-          startIcon={<LogoutIcon />}
-          onClick={onLogout}
-          sx={{ borderRadius: '10px' }}
-        >
-          {t('auth.logout')}
-        </Button>
       </Box>
     </Box>
   );

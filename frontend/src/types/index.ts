@@ -2,7 +2,7 @@ export interface AppConfig {
   backgroundImage: string;
 }
 
-export type ViewState = 'login' | 'dashboard' | 'profile' | 'schedule';
+export type ViewState = 'login' | 'dashboard' | 'schedule' | 'upcoming_tasks' | 'schedule_logs' | 'portal';
 
 export interface CurrentUser {
   id: string;
@@ -28,14 +28,6 @@ export interface UserDTO {
   roles: string[];
 }
 
-export interface UpdateProfileRequest {
-  email?: string;
-  password?: string;
-  name?: string;
-  department?: string;
-  memo?: string;
-  extension?: string;
-}
 
 export interface CreateUserRequest {
   username: string;
@@ -76,21 +68,6 @@ export interface CaptchaResponse {
   captchaImage: string;
 }
 
-export interface ForgotPasswordRequest {
-  username: string;
-  email: string;
-}
-
-export interface ResetPasswordRequest {
-  token: string;
-  newPassword: string;
-}
-
-export interface ValidateTokenResponse {
-  valid: boolean;
-  email?: string;
-  remainingSeconds?: number;
-}
 
 export interface ApiError {
   code: string;

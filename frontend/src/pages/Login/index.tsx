@@ -8,13 +8,12 @@ import { apiService } from '~/services/api';
 
 interface LoginProps {
   readonly onLogin: (username: string, password: string, captchaId?: string, captchaCode?: string) => Promise<void>;
-  readonly onForgotPassword: () => void;
   readonly error?: string;
   readonly bgImage: string;
   readonly version?: string;
 }
 
-function Login({ onLogin, onForgotPassword, error, bgImage, version }: Readonly<LoginProps>) {
+function Login({ onLogin, error, bgImage, version }: Readonly<LoginProps>) {
   const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -244,14 +243,6 @@ function Login({ onLogin, onForgotPassword, error, bgImage, version }: Readonly<
               ) : (
                 t('auth.login', 'SIGN IN')
               )}
-            </button>
-
-            <button
-              type="button"
-              className="login-forgot-btn"
-              onClick={onForgotPassword}
-            >
-              {t('auth.forgotPassword')}
             </button>
           </form>
         </div>

@@ -12,10 +12,9 @@ import type { CurrentUser, UserPermissionsDTO, ViewState, ResourceTreeDTO } from
 import { DEFAULT_BACKGROUND } from '~/configs/constants';
 import Dashboard from '~/pages/Dashboard';
 import Login from '~/pages/Login';
-import ForgotPassword from '~/pages/ForgotPassword';
-import ResetPassword from '~/pages/ResetPassword';
-import Profile from '~/pages/Profile';
 import ScheduleManagement from '~/pages/ScheduleManagement';
+import ScheduleLogs from '~/pages/ScheduleLogs';
+import UpcomingTasks from '~/pages/UpcomingTasks';
 import MainLayout from '~/components/MainLayout';
 import AnimatedPage from '~/components/AnimatedPage';
 import { Box, CircularProgress } from '@mui/material';
@@ -24,15 +23,17 @@ import { Box, CircularProgress } from '@mui/material';
 const pathToViewState: Record<string, ViewState> = {
   '/': 'dashboard',
   '/dashboard': 'dashboard',
-  '/profile': 'profile',
   '/schedule-management': 'schedule',
+  '/upcoming-tasks': 'upcoming_tasks',
+  '/schedule-logs': 'schedule_logs',
 };
 
 const viewStateToPath: Record<ViewState, string> = {
   login: '/login',
   dashboard: '/dashboard',
-  profile: '/profile',
   schedule: '/schedule-management',
+  upcoming_tasks: '/upcoming-tasks',
+  schedule_logs: '/schedule-logs',
 };
 
 const getViewStateFromMenuCode = (code: string): ViewState | null => {
@@ -40,6 +41,8 @@ const getViewStateFromMenuCode = (code: string): ViewState | null => {
     dashboard: 'dashboard',
     MENU_DASHBOARD: 'dashboard',
     SCHEDULE_MGMT: 'schedule',
+    UPCOMING_TASKS: 'upcoming_tasks',
+    SCHEDULE_LOGS: 'schedule_logs',
   };
 
   const mapped = viewMap[code] || (code as ViewState);
@@ -122,7 +125,7 @@ function AppContent() {
           window.history.replaceState({}, '', newUrl);
         }
 
-        const authPages = ['/login', '/forgot-password', '/reset-password'];
+        const authPages = ['/login'];
         
         // Handle authentication bypass for local development
         if (envConfig.isAuthBypass && !urlToken) {
@@ -138,7 +141,9 @@ function AppContent() {
           const mockPermissions: UserPermissionsDTO = {
             menus: [
               { id: 1, code: 'dashboard', name: 'Dashboard', type: 'MENU' as const, enabled: true, children: [], description: '', parentId: null, sortOrder: 0 },
-              { id: 2, code: 'SCHEDULE_MGMT', name: '排程管理', type: 'MENU' as const, enabled: true, children: [], description: '', parentId: null, sortOrder: 1 }
+              { id: 2, code: 'SCHEDULE_MGMT', name: '排程管理', type: 'MENU' as const, enabled: true, children: [], description: '', parentId: null, sortOrder: 1 },
+              { id: 3, code: 'UPCOMING_TASKS', name: '任務清單', type: 'MENU' as const, enabled: true, children: [], description: '', parentId: null, sortOrder: 2 },
+              { id: 4, code: 'SCHEDULE_LOGS', name: '排程日誌', type: 'MENU' as const, enabled: true, children: [], description: '', parentId: null, sortOrder: 3 }
             ],
             portals: [],
             permissions: ['ALL_PERMISSIONS'],
@@ -190,7 +195,7 @@ function AppContent() {
         }
       } catch (error) {
         logger.error('Init error:', error);
-        const authPages = ['/login', '/forgot-password', '/reset-password'];
+        const authPages = ['/login'];
         if (!authPages.includes(location.pathname)) {
           navigate('/login', { replace: true });
         }
@@ -247,13 +252,7 @@ function AppContent() {
     }
   };
 
-  const handleLogout = () => {
-    apiService.logout();
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-    setUserPermissions(null);
-    navigate('/login', { replace: true });
-  };
+
 
   const handleNavigate = (view: ViewState, url?: string) => {
     // If it's an external URL
@@ -269,15 +268,11 @@ function AppContent() {
   };
 
 
-  const handleBackToLogin = () => {
-    navigate('/login', { replace: true });
-  };
 
   // Route protection effect
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      const authPages = ['/login', '/forgot-password', '/reset-password'];
-      if (!authPages.includes(location.pathname)) {
+      if (location.pathname !== '/login') {
         navigate('/login', { replace: true });
       }
     }
@@ -294,20 +289,8 @@ function AppContent() {
         <Route path="/login" element={
           <Login
             onLogin={handleLogin}
-            onForgotPassword={() => navigate('/forgot-password')}
             error={loginError}
             bgImage={bgImage}
-            version={VERSION}
-          />
-        } />
-        <Route path="/forgot-password" element={
-          <ForgotPassword onBackToLogin={handleBackToLogin} bgImage={bgImage} version={VERSION} />
-        } />
-        <Route path="/reset-password" element={
-          <ResetPassword 
-            token={searchParams.get('token') || ''} 
-            onBackToLogin={handleBackToLogin} 
-            bgImage={bgImage} 
             version={VERSION}
           />
         } />
@@ -326,7 +309,7 @@ function AppContent() {
   }
 
   const defaultPath = getDefaultPathFromPermissions(userPermissions);
-  const allowedViews = new Set<ViewState>(['profile']);
+  const allowedViews = new Set<ViewState>();
   
   const flattenMenus = (items: ResourceTreeDTO[]) => {
     items.forEach(item => {
@@ -348,7 +331,6 @@ function AppContent() {
       currentView={currentView}
       bgImage={bgImage}
       onNavigate={handleNavigate}
-      onLogout={handleLogout}
     >
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
@@ -364,7 +346,7 @@ function AppContent() {
                 )
               }
             />
-            <Route
+             <Route
               path="/schedule-management"
               element={
                 <AnimatedPage>
@@ -373,16 +355,22 @@ function AppContent() {
               }
             />
             <Route
-              path="/profile"
+              path="/upcoming-tasks"
               element={
                 <AnimatedPage>
-                  <Profile
-                    onClose={() => navigate(defaultPath)}
-                    onProfileUpdated={(user) => setCurrentUser(mapUserDTOToCurrentUser(user))}
-                  />
+                  <UpcomingTasks />
                 </AnimatedPage>
               }
             />
+            <Route
+              path="/schedule-logs"
+              element={
+                <AnimatedPage>
+                  <ScheduleLogs />
+                </AnimatedPage>
+              }
+            />
+
             <Route path="/" element={<Navigate to={defaultPath} replace />} />
             <Route path="*" element={<Navigate to={defaultPath} replace />} />
           </Routes>

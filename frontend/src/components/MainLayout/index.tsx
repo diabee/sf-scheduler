@@ -11,6 +11,8 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import CloseIcon from '@mui/icons-material/Close';
+import ListAltIcon from '@mui/icons-material/ListAlt';
+import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
 
 import { apiService } from '~/services/api';
 import { logger } from '~/configs/env';
@@ -30,7 +32,6 @@ interface MainLayoutProps {
   currentView: ViewState;
   bgImage: string;
   onNavigate: (view: ViewState, url?: string) => void;
-  onLogout: () => void;
   children: React.ReactNode;
 }
 
@@ -48,6 +49,8 @@ const getIconComponent = (iconName?: string): React.ReactNode => {
     'Admin': <AdminPanelSettingsIcon />,
     'SmartToy': <SmartToyIcon />,
     'CalendarMonth': <CalendarMonthIcon />,
+    'ListAlt': <ListAltIcon />,
+    'PlaylistPlay': <PlaylistPlayIcon />,
   };
   return iconMap[iconName || ''] || <AppsIcon />;
 };
@@ -55,6 +58,8 @@ const getIconComponent = (iconName?: string): React.ReactNode => {
 const fallbackNavItems = [
   { id: 'dashboard' as ViewState, labelKey: 'nav.dashboard', icon: <DashboardIcon />, requireAdmin: false },
   { id: 'schedule' as ViewState, labelKey: 'nav.schedule', icon: <CalendarMonthIcon />, requireAdmin: false },
+  { id: 'upcoming_tasks' as ViewState, labelKey: 'nav.upcomingTasks', icon: <PlaylistPlayIcon />, requireAdmin: false },
+  { id: 'schedule_logs' as ViewState, labelKey: 'nav.scheduleLogs', icon: <ListAltIcon />, requireAdmin: false },
 ];
 
 function MainLayout({
@@ -62,7 +67,6 @@ function MainLayout({
   currentView,
   bgImage,
   onNavigate,
-  onLogout,
   children,
 }: MainLayoutProps) {
   const { t, i18n } = useTranslation();
@@ -95,13 +99,16 @@ function MainLayout({
 
   const isAdmin = userRoles.includes('ROLE_ADMIN');
 
-  const getViewState = (code: string): ViewState => {
+  const getViewState = (code: string): ViewState | null => {
+    const normalizedCode = code.toUpperCase();
     const viewMap: Record<string, ViewState> = {
-      'dashboard': 'dashboard',
-      'MENU_DASHBOARD': 'dashboard',
-      'SCHEDULE_MGMT': 'schedule',
+      'DASHBOARD_SCHEDULER': 'dashboard',
+      'SCHEDULER_MAIN': 'schedule',
+      'UPCOMING_TASKS': 'upcoming_tasks',
+      'SCHEDULE_LOGS': 'schedule_logs',
+      'portal': 'portal',
     };
-    return viewMap[code] || code as ViewState;
+    return viewMap[normalizedCode] || viewMap[code] || null;
   };
 
   const sortedDynamicMenus = [...dynamicMenus].sort((a, b) => {
@@ -113,9 +120,10 @@ function MainLayout({
   const flattenMenus = (menus: ResourceTreeDTO[]): ResourceTreeDTO[] => {
     const result: ResourceTreeDTO[] = [];
     menus.forEach(menu => {
-      // Only include if it's a MENU type (or if we want all types that show as items)
-      // Actually the backend 'menus' field should only have MENU types
-      result.push(menu);
+      // Only include if it belongs to this system (mapped to a ViewState)
+      if (getViewState(menu.code)) {
+        result.push(menu);
+      }
       if (menu.children && menu.children.length > 0) {
         result.push(...flattenMenus(menu.children));
       }
@@ -127,7 +135,7 @@ function MainLayout({
 
   const navItems = allMenus.length > 0
     ? allMenus.map(menu => ({
-        id: getViewState(menu.code),
+        id: getViewState(menu.code)!,
         labelKey: getLocalizedName(menu, i18n.language),
         icon: getIconComponent(menu.icon),
         isTranslated: true,
@@ -145,7 +153,6 @@ function MainLayout({
       navItems={navItems}
       currentView={currentView}
       onNavigate={handleNavClick}
-      onLogout={onLogout}
       currentUser={currentUser}
     />
   );
