@@ -30,6 +30,10 @@ import type {
 
 const AUTH_TOKEN_KEY = 'auth_token';
 
+interface RequestOptions extends RequestInit {
+  baseUrl?: string;
+}
+
 class ApiService {
   private token: string | null = null;
 
@@ -37,7 +41,7 @@ class ApiService {
     this.token = localStorage.getItem(AUTH_TOKEN_KEY);
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -47,7 +51,8 @@ class ApiService {
       (headers as Record<string, string>)['Authorization'] = `Bearer ${this.token}`;
     }
 
-    const url = `${envConfig.apiBaseUrl}${endpoint}`;
+    const baseUrl = options.baseUrl || envConfig.apiBaseUrl;
+    const url = `${baseUrl}${endpoint}`;
     logger.debug('API Request:', options.method || 'GET', url);
 
     let response: Response;
@@ -111,34 +116,43 @@ class ApiService {
     const response = await this.request<AuthResponse>('/api/v2/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
+      baseUrl: envConfig.authApiBaseUrl,
     });
     this.setToken(response.token);
     return response;
   }
 
   async getCaptcha(): Promise<CaptchaResponse> {
-    return this.request<CaptchaResponse>('/api/v2/captcha');
+    return this.request<CaptchaResponse>('/api/v2/captcha', {
+      baseUrl: envConfig.authApiBaseUrl,
+    });
   }
 
   async isCaptchaEnabled(): Promise<boolean> {
-    return this.request<boolean>('/api/v2/captcha/status');
+    return this.request<boolean>('/api/v2/captcha/status', {
+      baseUrl: envConfig.authApiBaseUrl,
+    });
   }
 
   async forgotPassword(request: ForgotPasswordRequest): Promise<void> {
     await this.request<void>('/api/v2/password/forgot', {
       method: 'POST',
       body: JSON.stringify(request),
+      baseUrl: envConfig.authApiBaseUrl,
     });
   }
 
   async validateResetToken(token: string): Promise<ValidateTokenResponse> {
-    return this.request<ValidateTokenResponse>(`/api/v2/password/validate?token=${encodeURIComponent(token)}`);
+    return this.request<ValidateTokenResponse>(`/api/v2/password/validate?token=${encodeURIComponent(token)}`, {
+      baseUrl: envConfig.authApiBaseUrl,
+    });
   }
 
   async resetPassword(request: ResetPasswordRequest): Promise<void> {
     await this.request<void>('/api/v2/password/reset', {
       method: 'POST',
       body: JSON.stringify(request),
+      baseUrl: envConfig.authApiBaseUrl,
     });
   }
 

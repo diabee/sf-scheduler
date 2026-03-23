@@ -1,18 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import PeopleIcon from '@mui/icons-material/People';
-import SecurityIcon from '@mui/icons-material/Security';
-import StorageIcon from '@mui/icons-material/Storage';
-import SettingsIcon from '@mui/icons-material/Settings';
-import AppsIcon from '@mui/icons-material/Apps';
-import FolderIcon from '@mui/icons-material/Folder';
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import CloseIcon from '@mui/icons-material/Close';
-import ListAltIcon from '@mui/icons-material/ListAlt';
-import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
+import * as MuiIcons from '@mui/icons-material';
 
 import { apiService } from '~/services/api';
 import { logger } from '~/configs/env';
@@ -38,28 +26,16 @@ interface MainLayoutProps {
 const DRAWER_WIDTH = 260;
 
 const getIconComponent = (iconName?: string): React.ReactNode => {
-  const iconMap: Record<string, React.ReactNode> = {
-    'Dashboard': <DashboardIcon />,
-    'People': <PeopleIcon />,
-    'Security': <SecurityIcon />,
-    'Storage': <StorageIcon />,
-    'Settings': <SettingsIcon />,
-    'Apps': <AppsIcon />,
-    'Folder': <FolderIcon />,
-    'Admin': <AdminPanelSettingsIcon />,
-    'SmartToy': <SmartToyIcon />,
-    'CalendarMonth': <CalendarMonthIcon />,
-    'ListAlt': <ListAltIcon />,
-    'PlaylistPlay': <PlaylistPlayIcon />,
-  };
-  return iconMap[iconName || ''] || <AppsIcon />;
+  if (!iconName) return <MuiIcons.Apps />;
+  const IconComponent = (MuiIcons as any)[iconName];
+  return IconComponent ? <IconComponent /> : <MuiIcons.Apps />;
 };
 
 const fallbackNavItems = [
-  { id: 'dashboard' as ViewState, labelKey: 'nav.dashboard', icon: <DashboardIcon />, requireAdmin: false },
-  { id: 'schedule' as ViewState, labelKey: 'nav.schedule', icon: <CalendarMonthIcon />, requireAdmin: false },
-  { id: 'upcoming_tasks' as ViewState, labelKey: 'nav.upcomingTasks', icon: <PlaylistPlayIcon />, requireAdmin: false },
-  { id: 'schedule_logs' as ViewState, labelKey: 'nav.scheduleLogs', icon: <ListAltIcon />, requireAdmin: false },
+  { id: 'dashboard' as ViewState, labelKey: 'nav.dashboard', icon: <MuiIcons.Dashboard />, requireAdmin: false },
+  { id: 'schedule' as ViewState, labelKey: 'nav.schedule', icon: <MuiIcons.CalendarMonth />, requireAdmin: false },
+  { id: 'upcoming_tasks' as ViewState, labelKey: 'nav.upcomingTasks', icon: <MuiIcons.PlaylistPlay />, requireAdmin: false },
+  { id: 'schedule_logs' as ViewState, labelKey: 'nav.scheduleLogs', icon: <MuiIcons.ListAlt />, requireAdmin: false },
 ];
 
 function MainLayout({
@@ -106,7 +82,6 @@ function MainLayout({
       'SCHEDULER_MAIN': 'schedule',
       'UPCOMING_TASKS': 'upcoming_tasks',
       'SCHEDULE_LOGS': 'schedule_logs',
-      'portal': 'portal',
     };
     return viewMap[normalizedCode] || viewMap[code] || null;
   };
@@ -185,7 +160,7 @@ function MainLayout({
         >
           <Box className="flex justify-end p-2">
             <IconButton onClick={() => setMobileOpen(false)}>
-              <CloseIcon />
+              <MuiIcons.Close />
             </IconButton>
           </Box>
           {sideNav}

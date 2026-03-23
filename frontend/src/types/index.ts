@@ -2,7 +2,7 @@ export interface AppConfig {
   backgroundImage: string;
 }
 
-export type ViewState = 'login' | 'dashboard' | 'schedule' | 'upcoming_tasks' | 'schedule_logs' | 'portal';
+export type ViewState = 'login' | 'dashboard' | 'schedule' | 'upcoming_tasks' | 'schedule_logs';
 
 export interface CurrentUser {
   id: string;

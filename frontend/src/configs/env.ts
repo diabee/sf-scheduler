@@ -3,12 +3,15 @@ type Environment = 'development' | 'staging' | 'production';
 interface EnvConfig {
   env: Environment;
   apiBaseUrl: string;
+  authApiBaseUrl: string;
   isDevelopment: boolean;
   isStaging: boolean;
   isProduction: boolean;
   enableDevTools: boolean;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
   isAuthBypass: boolean;
+  oauth2AuthorizationUrl: string;
+  portalLoginUrl: string;
 }
 
 const getEnvironment = (): Environment => {
@@ -38,12 +41,15 @@ const createEnvConfig = (): EnvConfig => {
   return {
     env,
     apiBaseUrl: import.meta.env.VITE_API_URL || '',
+    authApiBaseUrl: import.meta.env.VITE_AUTH_API_URL || '',
     isDevelopment,
     isStaging,
     isProduction,
     enableDevTools: isDevelopment || isStaging,
     logLevel: getLogLevel(env),
     isAuthBypass: import.meta.env.VITE_APP_AUTH_BYPASS === 'true',
+    oauth2AuthorizationUrl: import.meta.env.VITE_OAUTH2_AUTH_URL || '',
+    portalLoginUrl: import.meta.env.VITE_PORTAL_LOGIN_URL || '',
   };
 };
 

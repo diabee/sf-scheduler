@@ -8,7 +8,6 @@ import { logger, envConfig } from '~/configs/env';
 import { handleError } from '~/utils/error';
 import { getCacheFreeUrl } from '~/utils';
 import type { CurrentUser, UserPermissionsDTO, ViewState, ResourceTreeDTO } from '~/types';
-// Removed Portal import
 import { DEFAULT_BACKGROUND } from '~/configs/constants';
 import Dashboard from '~/pages/Dashboard';
 import Login from '~/pages/Login';
@@ -37,16 +36,16 @@ const viewStateToPath: Record<ViewState, string> = {
 };
 
 const getViewStateFromMenuCode = (code: string): ViewState | null => {
+  const normalizedCode = code.toUpperCase();
   const viewMap: Record<string, ViewState> = {
-    dashboard: 'dashboard',
-    MENU_DASHBOARD: 'dashboard',
-    SCHEDULE_MGMT: 'schedule',
-    UPCOMING_TASKS: 'upcoming_tasks',
-    SCHEDULE_LOGS: 'schedule_logs',
+    'DASHBOARD_SCHEDULER': 'dashboard',
+    'SCHEDULER_MAIN': 'schedule',
+    'SCHEDULE_MGMT': 'schedule',
+    'UPCOMING_TASKS': 'upcoming_tasks',
+    'SCHEDULE_LOGS': 'schedule_logs',
   };
 
-  const mapped = viewMap[code] || (code as ViewState);
-  return mapped in viewStateToPath ? mapped : null;
+  return viewMap[normalizedCode] || viewMap[code] || null;
 };
 
 const getDefaultPathFromPermissions = (permissions: UserPermissionsDTO | null): string => {
@@ -75,7 +74,6 @@ const getDefaultPathFromPermissions = (permissions: UserPermissionsDTO | null): 
 
 const VERSION = '1.0.0';
 
-// Inner component that uses router hooks
 function AppContent() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -89,10 +87,9 @@ function AppContent() {
   const [loginError, setLoginError] = useState<string>('');
   const [userPermissions, setUserPermissions] = useState<UserPermissionsDTO | null>(null);
 
-  // Get current view from path
   const currentView: ViewState = pathToViewState[location.pathname] || 'dashboard';
 
-  const mapUserDTOToCurrentUser = useCallback((dto: { id: number; username: string; email: string; name?: string; department?: string; memo?: string; extension?: string; roles: string[]; enabled: boolean }): CurrentUser => ({
+  const mapUserDTOToCurrentUser = useCallback((dto: any): CurrentUser => ({
     id: String(dto.id),
     username: dto.username,
     email: dto.email,
@@ -109,95 +106,59 @@ function AppContent() {
       try {
         const config = StorageService.getConfig();
         if (config.backgroundImage) {
-          // Force a fresh fetch from storage even if it's the same URL
           setBgImage(getCacheFreeUrl(config.backgroundImage));
         }
-
-        // Only verify on initial load
-        if (isAuthenticated) return;
 
         const urlToken = searchParams.get('token');
         if (urlToken) {
           logger.info('Found SSO token in URL, initializing session...');
           apiService.setToken(urlToken);
-          // Remove token from URL for security
+          // Clean URL
           const newUrl = window.location.pathname;
           window.history.replaceState({}, '', newUrl);
         }
 
-        const authPages = ['/login'];
-        
-        // Handle authentication bypass for local development
-        if (envConfig.isAuthBypass && !urlToken) {
-          logger.info('Authentication bypass is enabled. Setting mock user...');
-          const mockUser = {
-            id: 1,
-            username: 'admin',
-            email: 'admin@local.dev',
-            name: 'Local Admin',
-            roles: ['ROLE_ADMIN'],
-            enabled: true
-          };
-          const mockPermissions: UserPermissionsDTO = {
-            menus: [
-              { id: 1, code: 'dashboard', name: 'Dashboard', type: 'MENU' as const, enabled: true, children: [], description: '', parentId: null, sortOrder: 0 },
-              { id: 2, code: 'SCHEDULE_MGMT', name: '排程管理', type: 'MENU' as const, enabled: true, children: [], description: '', parentId: null, sortOrder: 1 },
-              { id: 3, code: 'UPCOMING_TASKS', name: '任務清單', type: 'MENU' as const, enabled: true, children: [], description: '', parentId: null, sortOrder: 2 },
-              { id: 4, code: 'SCHEDULE_LOGS', name: '排程日誌', type: 'MENU' as const, enabled: true, children: [], description: '', parentId: null, sortOrder: 3 }
-            ],
-            portals: [],
-            permissions: ['ALL_PERMISSIONS'],
-            roles: ['ROLE_ADMIN'],
-          };
-          
-          setCurrentUser(mapUserDTOToCurrentUser(mockUser));
-          setUserPermissions(mockPermissions);
+        // 2. Handle Auth Bypass for local development
+        if (envConfig.isAuthBypass && !apiService.getToken()) {
+          logger.info('Auth bypass mode enabled, skipping authentication...');
           setIsAuthenticated(true);
-          
-          if (location.pathname === '/login' || location.pathname === '/') {
-            navigate('/dashboard', { replace: true });
-          }
+          setIsLoading(false);
           return;
         }
 
-        const authUser = await apiService.verifyToken();
-        
-        if (authUser) {
-          setCurrentUser(mapUserDTOToCurrentUser(authUser));
-          setIsAuthenticated(true);
+        // 3. Verify existing or new token
+        if (apiService.getToken()) {
+          try {
+            const authUser = await apiService.verifyToken();
+            if (authUser) {
+              setCurrentUser(mapUserDTOToCurrentUser(authUser));
+              setIsAuthenticated(true);
 
-          if (!userPermissions) {
-            try {
               const permissions = await apiService.getUserPermissions();
               setUserPermissions(permissions);
               
-              // Only redirect if on login page or root
               if (location.pathname === '/login' || location.pathname === '/') {
                 navigate(getDefaultPathFromPermissions(permissions), { replace: true });
               }
-            } catch (err) {
-              logger.warn('Failed to load user permissions during init, using fallback:', err);
-              // Provide fallback permissions so the app doesn't get stuck
-              const fallbackPermissions: UserPermissionsDTO = {
-                menus: [{ id: 0, code: 'dashboard', name: 'Dashboard', type: 'MENU' as const, enabled: true, children: [], description: '', parentId: null, sortOrder: 0 }],
-                portals: [],
-                permissions: [],
-                roles: authUser.roles || [],
-              };
-              setUserPermissions(fallbackPermissions);
-              if (location.pathname === '/login' || location.pathname === '/') {
-                navigate('/dashboard', { replace: true });
-              }
+              return; // Success, stop here
             }
+          } catch (err) {
+            logger.error('Token verification failed:', err);
+            // If verification fails, we might still want to try OAuth2 or redirect
           }
-        } else if (!authPages.includes(location.pathname)) {
-          navigate('/login', { replace: true });
+        }
+
+        // 4. Fallback: If not authenticated and no valid token, redirect to portal
+        if (!envConfig.isAuthBypass) {
+          // If we had a token but it failed, or we have no token at all,
+          // redirect to the main portal login.
+          logger.info('User not authenticated, redirecting to Portal Login...');
+          window.location.href = envConfig.portalLoginUrl;
         }
       } catch (error) {
         logger.error('Init error:', error);
-        const authPages = ['/login'];
-        if (!authPages.includes(location.pathname)) {
-          navigate('/login', { replace: true });
+        if (!envConfig.isAuthBypass) {
+           window.location.href = envConfig.portalLoginUrl;
         }
       } finally {
         setIsLoading(false);
@@ -205,27 +166,7 @@ function AppContent() {
     };
 
     init();
-
-    // Listen for storage changes from other tabs (e.g. background image updates)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'app_config' && e.newValue) {
-        try {
-          const newConfig = JSON.parse(e.newValue);
-          if (newConfig.backgroundImage) {
-            setBgImage(getCacheFreeUrl(newConfig.backgroundImage));
-          }
-        } catch (err) {
-          console.error('Failed to parse storage change:', err);
-        }
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount
+  }, []);
 
   const handleLogin = async (username: string, password: string, captchaId?: string, captchaCode?: string) => {
     setLoginError('');
@@ -235,14 +176,8 @@ function AppContent() {
       setCurrentUser(mapUserDTOToCurrentUser(authUser));
       setIsAuthenticated(true);
 
-      let permissions: UserPermissionsDTO | null = null;
-      try {
-        permissions = await apiService.getUserPermissions();
-        setUserPermissions(permissions);
-      } catch (err) {
-        logger.warn('Failed to load user permissions during login:', err);
-        setUserPermissions(null);
-      }
+      const permissions = await apiService.getUserPermissions();
+      setUserPermissions(permissions);
 
       navigate(getDefaultPathFromPermissions(permissions), { replace: true });
     } catch (err) {
@@ -252,37 +187,18 @@ function AppContent() {
     }
   };
 
-
-
   const handleNavigate = (view: ViewState, url?: string) => {
-    // If it's an external URL
     if (url?.startsWith('http')) {
       window.open(url, '_blank', 'noopener,noreferrer');
       return;
     }
-
     const path = viewStateToPath[view] || url;
-    if (path) {
-      navigate(path);
-    }
+    if (path) navigate(path);
   };
 
+  if (isLoading) return null;
 
-
-  // Route protection effect
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      if (location.pathname !== '/login') {
-        navigate('/login', { replace: true });
-      }
-    }
-  }, [location.pathname, isAuthenticated, isLoading, navigate]);
-
-  if (isLoading) {
-    return null; // Or a loading spinner
-  }
-
-  // Auth routes (not authenticated)
+  // Render Login page if not authenticated
   if (!isAuthenticated) {
     return (
       <Routes>
@@ -299,7 +215,29 @@ function AppContent() {
     );
   }
 
-  // Protected routes (authenticated)
+  // Handle Auth Bypass landing
+  if (envConfig.isAuthBypass && !userPermissions) {
+     return (
+       <MainLayout
+         currentUser={{ id: 'bypass', username: 'dev-user', name: 'Dev User', email: 'dev@d8ai.com', roles: ['ROLE_ADMIN'], enabled: true }}
+         currentView={currentView}
+         bgImage={bgImage}
+         onNavigate={handleNavigate}
+       >
+         <AnimatePresence mode="wait">
+           <Routes location={location} key={location.pathname}>
+             <Route path="/dashboard" element={<AnimatedPage><Dashboard /></AnimatedPage>} />
+             <Route path="/schedule-management" element={<AnimatedPage><ScheduleManagement /></AnimatedPage>} />
+             <Route path="/upcoming-tasks" element={<AnimatedPage><UpcomingTasks /></AnimatedPage>} />
+             <Route path="/schedule-logs" element={<AnimatedPage><ScheduleLogs /></AnimatedPage>} />
+             <Route path="/" element={<Navigate to="/dashboard" replace />} />
+             <Route path="*" element={<Navigate to="/dashboard" replace />} />
+           </Routes>
+         </AnimatePresence>
+       </MainLayout>
+     );
+  }
+
   if (!userPermissions) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -309,21 +247,6 @@ function AppContent() {
   }
 
   const defaultPath = getDefaultPathFromPermissions(userPermissions);
-  const allowedViews = new Set<ViewState>();
-  
-  const flattenMenus = (items: ResourceTreeDTO[]) => {
-    items.forEach(item => {
-      const view = getViewStateFromMenuCode(item.code);
-      if (view) allowedViews.add(view);
-      if (item.children && item.children.length > 0) {
-        flattenMenus(item.children);
-      }
-    });
-  };
-  
-  if (userPermissions.menus) {
-    flattenMenus(userPermissions.menus);
-  }
 
   return (
     <MainLayout
@@ -332,54 +255,20 @@ function AppContent() {
       bgImage={bgImage}
       onNavigate={handleNavigate}
     >
-        <AnimatePresence mode="wait">
-          <Routes location={location} key={location.pathname}>
-            <Route
-              path="/dashboard"
-              element={
-                allowedViews.has('dashboard') ? (
-                  <AnimatedPage>
-                    <Dashboard />
-                  </AnimatedPage>
-                ) : (
-                  <Navigate to={defaultPath} replace />
-                )
-              }
-            />
-             <Route
-              path="/schedule-management"
-              element={
-                <AnimatedPage>
-                  <ScheduleManagement />
-                </AnimatedPage>
-              }
-            />
-            <Route
-              path="/upcoming-tasks"
-              element={
-                <AnimatedPage>
-                  <UpcomingTasks />
-                </AnimatedPage>
-              }
-            />
-            <Route
-              path="/schedule-logs"
-              element={
-                <AnimatedPage>
-                  <ScheduleLogs />
-                </AnimatedPage>
-              }
-            />
-
-            <Route path="/" element={<Navigate to={defaultPath} replace />} />
-            <Route path="*" element={<Navigate to={defaultPath} replace />} />
-          </Routes>
-        </AnimatePresence>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/dashboard" element={<AnimatedPage><Dashboard /></AnimatedPage>} />
+          <Route path="/schedule-management" element={<AnimatedPage><ScheduleManagement /></AnimatedPage>} />
+          <Route path="/upcoming-tasks" element={<AnimatedPage><UpcomingTasks /></AnimatedPage>} />
+          <Route path="/schedule-logs" element={<AnimatedPage><ScheduleLogs /></AnimatedPage>} />
+          <Route path="/" element={<Navigate to={defaultPath} replace />} />
+          <Route path="*" element={<Navigate to={defaultPath} replace />} />
+        </Routes>
+      </AnimatePresence>
     </MainLayout>
   );
 }
 
-// Main App component with BrowserRouter
 function App() {
   return (
     <BrowserRouter>
